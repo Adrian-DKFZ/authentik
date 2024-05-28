@@ -12,9 +12,14 @@ from structlog.stdlib import get_logger
 
 from authentik.sources.oauth.clients.base import BaseOAuthClient
 
+from base64 import b64encode
+
 LOGGER = get_logger()
 SESSION_KEY_OAUTH_PKCE = "authentik/sources/oauth/pkce"
 
+def basic_auth(username, password):
+    token = b64encode(f"{username}:{password}".encode('utf-8')).decode("ascii")
+    return f'Basic {token}'
 
 class OAuth2Client(BaseOAuthClient):
     """OAuth2 Client"""
@@ -80,8 +85,8 @@ class OAuth2Client(BaseOAuthClient):
             access_token_url = self.source.source_type.access_token_url or ""
             if self.source.source_type.urls_customizable and self.source.access_token_url:
                 access_token_url = self.source.access_token_url
-            response = self.do_request(
-                "post", access_token_url, data=args, headers=self._default_headers, **request_kwargs
+            response = self.session.request(
+                "post", access_token_url, data=args, headers=headers={"Authorization":basic_auth(self.get_client_id(), self.get_client_secret())}, **request_kwargs
             )
             response.raise_for_status()
         except RequestException as exc:
